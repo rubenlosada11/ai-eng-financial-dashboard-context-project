@@ -53,3 +53,59 @@ levantaron ambos servicios con los comandos declarados en `backend/requirements.
 - No se pudo verificar el flujo exacto vía `docker compose up --build` (Docker no instalado en este
   entorno). El Dockerfile de cada servicio y `docker-compose.yml` son coherentes con el comportamiento
   observado al ejecutar los servicios de forma nativa (mismos comandos de arranque, mismos puertos).
+
+## Rule validation
+
+**Task:**
+Corregir el hallazgo #4 de `engineering-findings.md`: el header del dashboard mostraba el periodo
+hardcodeado `"2024 — Full Year"`, que ya no coincide con el rango de datos real (relativo a la fecha
+del sistema). Tarea real, pequeña, y ya identificada como inconsistencia verificada en Fase 1/2 — no
+un cambio inventado solo para "demostrar" las reglas.
+
+**Rules applied (razonadas antes de tocar código):**
+- `.agents/rules/frontend.md`: "Si se necesita mostrar el periodo de datos en la UI, derivarlo de la
+  API (`/api/metrics/facets`) en vez de un string fijo."
+- `.agents/rules/architecture.md`: los tipos que reflejan la forma cruda de la API deben mantenerse en
+  snake_case, igual que el modelo Pydantic correspondiente.
+- `.agents/rules/testing.md`: cualquier función nueva con lógica no trivial necesita test; ejecutar
+  lint/tests antes de dar por terminado.
+- `.agents/rules/backend.md`: confirmó que no había que tocar el backend (el endpoint `/api/metrics/facets`
+  ya existe y ya está testeado en `backend/tests/test_routes.py`).
+
+**Cambios realizados:**
+- `frontend/src/lib/financial-types.ts`: nuevo tipo `MetricsFacets` en snake_case
+  (`min_date`/`max_date`, no `minDate`/`maxDate`) — decisión directamente dictada por
+  `architecture.md`, no por convención habitual de TypeScript.
+- `frontend/src/lib/financial-utils.ts`: nueva función `formatPeriodLabel(minDate, maxDate)`.
+- `frontend/src/lib/financial-utils.test.ts`: test nuevo para `formatPeriodLabel`, usando fechas con
+  el mismo formato ISO que devuelve la API real.
+- `frontend/src/App.tsx`: ahora hace `Promise.all` de `/api/metrics` y `/api/metrics/facets`, calcula
+  el periodo real y lo pasa a `DashboardHeader`.
+- `frontend/src/components/dashboard/dashboard-header.tsx`: se elimina el valor por defecto
+  hardcodeado (`period` pasa a ser prop obligatoria) para no dejar un segundo lugar con el año fijo.
+
+**Evidence:**
+- `npx tsc -b` → exit 0 (sin errores de tipos).
+- `npx eslint .` → sin salida (0 errores).
+- `npx vitest run` → 6 passed (5 previos + el nuevo test de `formatPeriodLabel`).
+- `curl http://127.0.0.1:8000/api/metrics/facets` (backend nativo) →
+  `{"min_date":"2025-09-02","max_date":"2026-08-28", ...}`, confirmando que el nuevo código consume
+  la forma real de la respuesta.
+- Backend `pytest` (15 tests, sin tocar) sigue en verde: el cambio no tocó `backend/`.
+
+**Result:**
+Las reglas dirigieron el cambio de forma concreta: sin `frontend.md` habría sido igual de fácil
+hardcodear un año distinto; sin `architecture.md` el tipo nuevo probablemente se habría escrito en
+camelCase (`minDate`/`maxDate`), rompiendo el parseo del JSON real. No se detectaron reglas ambiguas
+o inútiles en esta validación — las cuatro reglas consultadas aportaron una instrucción accionable
+distinta y verificable.
+
+**Adjustments:**
+Ninguno. No hizo falta reescribir ninguna regla tras la validación.
+
+**Limitación de esta validación:**
+No se pudo confirmar el resultado visualmente en un navegador: este entorno no tiene acceso de red
+para descargar un binario de Chromium (Playwright: `Download failure` / timeout al descargar
+`chrome-win64.zip`). La verificación se apoyó en typecheck, lint, tests unitarios (con fechas en el
+formato real de la API) y una llamada `curl` directa al endpoint real — no en una captura de pantalla
+del dashboard renderizado.

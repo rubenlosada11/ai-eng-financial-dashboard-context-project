@@ -5,6 +5,7 @@ import {
   computeMonthlyData,
   formatCurrency,
   formatPercent,
+  formatPeriodLabel,
 } from "./financial-utils";
 import type { FinancialMovement } from "./financial-types";
 
@@ -110,5 +111,11 @@ describe("formatters", () => {
 
   it("formats percent with one decimal", () => {
     expect(formatPercent(15.555)).toBe("15.6%");
+  });
+
+  it("formats a period label from min/max ISO dates", () => {
+    expect(formatPeriodLabel("2025-09-04", "2026-08-30")).toBe(
+      "Sep 2025 – Aug 2026",
+    );
   });
 });

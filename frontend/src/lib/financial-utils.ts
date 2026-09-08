@@ -78,3 +78,12 @@ export function formatCurrency(value: number): string {
 export function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
+
+export function formatPeriodLabel(minDate: string, maxDate: string): string {
+  const format = (isoDate: string) =>
+    new Date(isoDate).toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  return `${format(minDate)} – ${format(maxDate)}`;
+}
