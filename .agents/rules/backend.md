@@ -31,6 +31,11 @@ calendario fijo.
 - Antes de eliminar un endpoint de `backend/app/routes.py` por parecer no usado desde el frontend,
   comprobar si tiene tests en `backend/tests/test_routes.py`: si los tiene, es contrato soportado, no
   código muerto (el backend expone 9 endpoints pero el frontend solo consume `/api/metrics`).
+- Cualquier test nuevo que filtre por fecha sobre datos generados debe derivar el rango de fechas del
+  dataset real (p. ej. consultando `/api/metrics/facets` primero), nunca usar fechas absolutas
+  hardcodeadas: se desincronizan silenciosamente con el paso del tiempo sin que el test falle (bug
+  real encontrado y corregido en `test_metrics_comparison_returns_delta_fields`, ver
+  `verification.md`).
 
 ## Qué evitar
 - No introducir una base de datos, cache compartida entre requests, ni persistencia: el diseño actual

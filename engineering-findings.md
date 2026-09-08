@@ -207,6 +207,33 @@ Antes de dar por terminado cualquier cambio, ejecutar manualmente `pytest` (desd
 
 ---
 
+### 10. Un test con fechas fijas quedó desincronizado del dataset relativo a `date.today()`
+
+**Hallazgo:**
+`test_metrics_comparison_returns_delta_fields` consultaba `/api/metrics/comparison` con fechas fijas
+(`2025-03-01`/`2025-03-31`). Como los datos se generan en una ventana móvil de 12 meses relativa a
+`date.today()` (ver hallazgo #4), esas fechas quedaron fuera del rango real de datos
+(`2025-09` a `2026-08` en el momento de esta verificación). El endpoint devolvía
+`current_period: 0.0, previous_period: 0.0` — resultado completamente vacío — pero el test seguía en
+verde porque solo comprobaba el conjunto de claves del JSON, no los valores.
+
+**Evidencia:**
+`backend/tests/test_routes.py` (test original, antes de esta corrección)
+Confirmado con `curl "/api/metrics/comparison?start_date=2025-03-01&end_date=2025-03-31"` →
+`{"current_period":0.0,"previous_period":0.0,"delta_abs":0.0,"delta_pct":null}`
+`curl "/api/metrics/facets"` → `min_date":"2025-09-02","max_date":"2026-08-28"` (marzo 2025 fuera de rango)
+
+**Implicación:**
+Un test que usa fechas absolutas contra un dataset generado de forma relativa a la fecha de ejecución
+deja de validar nada útil con el paso del tiempo, sin que el pipeline lo detecte (test sigue en
+verde). Cualquier test nuevo sobre datos generados por `generate_mock_movements` tiene el mismo riesgo
+si usa fechas fijas.
+
+**Regla candidata:**
+Los tests que ejercitan filtros de fecha sobre datos generados deben derivar el rango de fechas del
+propio dataset (p. ej. consultando `/api/metrics/facets` primero), no usar fechas absolutas
+hardcodeadas. Ver corrección aplicada y validada en `verification.md` ("Rule validation #2").
+
 ## Riesgos adicionales (sin regla dedicada, solo a documentar)
 
 - **CORS abierto**: `backend/app/main.py:7-13` permite cualquier origen (`allow_origins=["*"]`). Aceptable

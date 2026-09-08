@@ -109,3 +109,45 @@ para descargar un binario de Chromium (Playwright: `Download failure` / timeout 
 `chrome-win64.zip`). La verificación se apoyó en typecheck, lint, tests unitarios (con fechas en el
 formato real de la API) y una llamada `curl` directa al endpoint real — no en una captura de pantalla
 del dashboard renderizado.
+
+## Rule validation #2
+
+**Task:**
+Al reinvestigar `backend.md` para comprobar que aplicaba a un caso real, se detectó un bug genuino
+(no buscado deliberadamente para "demostrar" la regla): `test_metrics_comparison_returns_delta_fields`
+usaba fechas fijas (`2025-03-01`/`2025-03-31`) que ya no coincidían con el rango de datos real
+generado por `generate_mock_movements` (`2025-09-02` a `2026-08-28` en el momento de esta
+verificación). El endpoint devolvía resultados vacíos (`current_period: 0.0`) y el test seguía en
+verde porque solo comprobaba las claves del JSON, no los valores — un falso positivo real, no
+hipotético. Ver hallazgo #10 en `engineering-findings.md`.
+
+**Rules applied:**
+- `.agents/rules/backend.md`: "los datos generados son relativos a la fecha del sistema" — explica la
+  causa raíz exacta del bug, y ya incluía la instrucción de no asumir fechas fijas al trabajar con el
+  dataset generado.
+- `.agents/rules/testing.md`: ejecutar `pytest` para confirmar el estado antes/después del cambio.
+
+**Evidence:**
+- Antes de corregir: `curl "/api/metrics/comparison?start_date=2025-03-01&end_date=2025-03-31"` →
+  `{"current_period":0.0,"previous_period":0.0,"delta_abs":0.0,"delta_pct":null}` (datos vacíos,
+  bug confirmado).
+- `curl "/api/metrics/facets"` → `"min_date":"2025-09-02","max_date":"2026-08-28"` (marzo 2025 fuera
+  de rango).
+- Corrección: `backend/tests/test_routes.py` ahora deriva el rango de fechas de
+  `/api/metrics/facets` en vez de usar fechas fijas, y añade
+  `assert payload["current_period"] != 0 or payload["previous_period"] != 0` para que el test no
+  pueda volver a pasar silenciosamente con datos vacíos.
+- Tras el fix: `curl "/api/metrics/comparison?start_date=2025-10-02&end_date=2025-11-01"` →
+  `{"current_period":51431.48,"previous_period":-9371.66,"delta_abs":60803.14,"delta_pct":648.8}`
+  (datos reales, no degenerados).
+- `pytest` → **15/15 passed** tras el cambio.
+
+**Result:**
+La regla `backend.md` dirigió tanto el diagnóstico (identificar por qué el test daba datos vacíos)
+como la corrección (derivar fechas del dataset real en vez de hardcodearlas). Sin la regla ya escrita
+explicando la naturaleza relativa de los datos, el diagnóstico habría requerido releer
+`_year_for_month` desde cero.
+
+**Adjustments:**
+Se amplió `backend.md` con una instrucción accionable explícita sobre no usar fechas absolutas en
+tests nuevos que filtren por fecha, citando este bug como precedente concreto.

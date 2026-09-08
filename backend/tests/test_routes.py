@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -155,9 +155,16 @@ def test_top_categories_returns_limited_sorted_categories():
 
 
 def test_metrics_comparison_returns_delta_fields():
+    # Movements are generated relative to today's date (see _year_for_month), so a
+    # hardcoded date range can silently drift outside the generated window as time
+    # passes. Anchor the query to the dataset's own reported range instead.
+    facets = client.get("/api/metrics/facets").json()
+    start_date = date.fromisoformat(facets["min_date"]) + timedelta(days=30)
+    end_date = start_date + timedelta(days=30)
+
     response = client.get(
         "/api/metrics/comparison",
-        params={"start_date": "2025-03-01", "end_date": "2025-03-31"},
+        params={"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
     )
 
     assert response.status_code == 200
@@ -168,6 +175,7 @@ def test_metrics_comparison_returns_delta_fields():
         "delta_abs",
         "delta_pct",
     }
+    assert payload["current_period"] != 0 or payload["previous_period"] != 0
 
 
 def test_metrics_alerts_returns_anomaly_candidates():
