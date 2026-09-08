@@ -48,11 +48,37 @@ levantaron ambos servicios con los comandos declarados en `backend/requirements.
   servicios fuera de Docker: hay que apuntar `VITE_API_BASE_URL` directamente al backend.
   Evidencia: `frontend/vite.config.ts:11-16`, `frontend/.env.example`.
 
-## No verificable / fuera de alcance
+## Verificación con Docker (2026-09-08, posterior a la verificación inicial)
 
-- No se pudo verificar el flujo exacto vía `docker compose up --build` (Docker no instalado en este
-  entorno). El Dockerfile de cada servicio y `docker-compose.yml` son coherentes con el comportamiento
-  observado al ejecutar los servicios de forma nativa (mismos comandos de arranque, mismos puertos).
+Docker no estaba disponible al hacer la verificación inicial (ver más abajo). Una vez instalado,
+se ejecutó el mecanismo real documentado en el README:
+
+- `docker compose up --build` → ambos servicios arrancan correctamente (`docker compose ps`):
+  `backend-1` (puertos `8000`, `5678`) y `frontend-1` (puerto `5173`).
+- `curl http://localhost:8000/health` → `200`.
+- `curl http://localhost:5173/` → `200`.
+- **Proxy de Vite dentro de Docker**: `curl http://localhost:5173/api/metrics/facets` → `200` con el
+  JSON real del backend. Esto confirma que `http://backend:8000` (el target del proxy en
+  `frontend/vite.config.ts`) sí resuelve dentro de la red de Docker Compose, tal como afirma el
+  README ("no extra environment variables required in local development"). La limitación documentada
+  más abajo (`ENOTFOUND backend`) solo aplica fuera de Docker, como ya se indicaba.
+- `docker compose exec backend python -m pytest -q` → **15/15 passed** dentro del contenedor real.
+- `docker compose exec frontend npx vitest run` → **6/6 passed** dentro del contenedor real.
+- `docker compose down` → limpieza correcta, sin contenedores/red huérfanos.
+
+**Conclusión**: todas las afirmaciones del README sobre `docker compose up --build` (puertos, ausencia
+de variables de entorno necesarias, proxy `/api`) quedan ✅ VERIFICADAS con el mecanismo real, no solo
+por inspección de configuración. No se encontró ninguna discrepancia entre lo documentado en
+`README.md`/`README.es.md` y el comportamiento real — no hizo falta ninguna corrección de
+documentación bilingüe (`.agents/rules/documentation.md`).
+
+## No verificable / fuera de alcance (verificación inicial, antes de instalar Docker)
+
+- En la verificación inicial no se pudo comprobar el flujo vía `docker compose up --build` porque
+  Docker no estaba instalado en el entorno (el intento inicial de Docker Desktop falló por
+  "Virtualization support not detected" — VT-x desactivado en la BIOS del portátil; se resolvió
+  activándolo en la BIOS e instalando WSL2). Ver la sección "Verificación con Docker" arriba para el
+  resultado real una vez resuelto.
 
 ## Rule validation
 

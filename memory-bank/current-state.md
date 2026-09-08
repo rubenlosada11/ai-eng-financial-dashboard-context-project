@@ -4,29 +4,31 @@ Estado verificado ejecutando el proyecto el 2026-09-08 (detalle completo en `ver
 
 ## Qué funciona (verificado)
 
-- Backend: instala con `pip install -r backend/requirements.txt`, arranca con
-  `uvicorn app.main:app --host 0.0.0.0 --port 8000` (o vía Docker). `GET /health` y los 8 endpoints
-  bajo `/api/metrics*` responden correctamente. `pytest` → **15/15 tests pasan**.
-- Frontend: instala con `npm install`, arranca con `npm run dev` (Vite, puerto `5173`). `npx vitest run`
-  → **6/6 tests pasan**, `npx eslint .` → 0 errores, `npx tsc -b` → 0 errores.
-- Flujo completo frontend→backend verificado: con el backend accesible, el dashboard obtiene
-  `/api/metrics` y `/api/metrics/facets`, calcula KPIs/gráficos/periodo y los renderiza (lógica
-  verificada por tipos + tests unitarios + respuesta real de la API; ver limitación de navegador más
-  abajo).
+- **`docker compose up --build`** (mecanismo soportado por el README): ambos contenedores arrancan
+  (`backend-1` en `8000`/`5678`, `frontend-1` en `5173`); el proxy de Vite resuelve `backend:8000`
+  dentro de la red de Docker; `pytest` (15/15) y `vitest run` (6/6) pasan ejecutados dentro de los
+  propios contenedores. Verificado el 2026-09-08 — ver `verification.md`, sección "Verificación con
+  Docker".
+- Backend: también instala/arranca de forma nativa con `pip install -r backend/requirements.txt` +
+  `uvicorn app.main:app --host 0.0.0.0 --port 8000`. `GET /health` y los 8 endpoints bajo
+  `/api/metrics*` responden correctamente. `pytest` → **15/15 tests pasan**.
+- Frontend: también instala/arranca de forma nativa con `npm install` + `npm run dev` (Vite, puerto
+  `5173`). `npx vitest run` → **6/6 tests pasan**, `npx eslint .` → 0 errores, `npx tsc -b` → 0 errores.
+- Flujo completo frontend→backend verificado dentro de Docker por HTTP real (`curl` al proxy de Vite
+  devolviendo el JSON del backend), y por tipos + tests unitarios para la lógica de cálculo.
 
 ## Qué NO funciona tal cual / limitaciones conocidas
 
 - **Proxy de Vite fuera de Docker**: `frontend/vite.config.ts` reenvía `/api` a `http://backend:8000`,
-  hostname que solo resuelve dentro de la red de Docker Compose. Ejecutando frontend y backend
-  nativamente (sin Docker) el proxy falla con `ENOTFOUND backend`; hay que fijar
-  `VITE_API_BASE_URL` en `frontend/.env` apuntando al backend real. Docker en sí **no se probó** en
-  este entorno porque no está instalado — el comportamiento dentro de Docker se infiere de la
-  configuración (`docker-compose.yml`, ambos `Dockerfile`), no de una ejecución real con
-  `docker compose up`.
-- **Sin verificación visual en navegador**: no fue posible descargar un binario de Chromium en este
-  entorno (sin acceso de red saliente para ese paquete), así que ningún cambio de UI se confirmó con
-  una captura de pantalla real; la verificación se apoyó en typecheck, lint, tests unitarios y
-  llamadas directas a la API.
+  hostname que solo resuelve dentro de la red de Docker Compose (confirmado que sí resuelve dentro de
+  Docker, y que falla con `ENOTFOUND backend` fuera de Docker). Al ejecutar los servicios de forma
+  nativa hay que fijar `VITE_API_BASE_URL` en `frontend/.env` apuntando al backend real.
+- **Sin verificación visual en navegador**: no fue posible descargar un binario de Chromium en el
+  entorno de ejecución del agente (sin acceso de red saliente para ese paquete específico), así que
+  ningún cambio de UI se confirmó con una captura de pantalla automatizada; la verificación se apoyó
+  en typecheck, lint, tests unitarios y llamadas HTTP directas. Comprobarlo visualmente
+  (`docker compose up --build` y abrir `http://localhost:5173` en un navegador normal) queda como
+  paso manual opcional.
 
 ## Gaps conocidos (respaldados por evidencia, no suposición)
 

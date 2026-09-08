@@ -173,6 +173,10 @@ en `docker-compose.yml`. Ese hostname solo resuelve dentro de la red de Docker C
 `docker-compose.yml:14` (servicio `backend`)
 Confirmado ejecutando frontend y backend nativamente (sin Docker): `Error: getaddrinfo ENOTFOUND backend`
 (ver `verification.md`).
+Confirmado también en el sentido contrario: con `docker compose up --build`,
+`curl http://localhost:5173/api/metrics/facets` responde `200` con el JSON real del backend — el
+proxy sí funciona dentro de la red de Docker Compose, tal como documenta el README (ver
+`verification.md`, sección "Verificación con Docker").
 
 **Implicación:**
 Un agente que intente ejecutar/depurar el frontend fuera de Docker (p. ej. `npm run dev` en el host, con
