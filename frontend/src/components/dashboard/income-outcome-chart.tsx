@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { ChartDataTable } from './chart-data-table'
+import { ChartSkeleton } from './chart-skeleton'
 import { type MonthlyDataPoint } from '@/lib/financial-types'
 import { formatCurrency } from '@/lib/financial-utils'
 import {
@@ -48,19 +48,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
-  if (loading) {
-    return (
-      <Card className="border-border/60">
-        <CardHeader className="pb-4">
-          <Skeleton className="h-5 w-52" />
-          <Skeleton className="h-3 w-64 mt-1" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[280px] w-full rounded-lg" />
-        </CardContent>
-      </Card>
-    )
-  }
+  if (loading) return <ChartSkeleton />
 
   const hasData = data.some((d) => d.income > 0 || d.outcome > 0)
 
