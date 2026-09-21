@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { ChartSkeleton } from "@/components/dashboard/chart-skeleton";
+import { ChartsErrorBoundary } from "@/components/dashboard/charts-error-boundary";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { KPIRow } from "@/components/dashboard/kpi-row";
-import { IncomeOutcomeChart } from "@/components/dashboard/income-outcome-chart";
-import { ProfitPercentChart } from "@/components/dashboard/profit-percent-chart";
 import {
   type FinancialMovement,
   type KPIMetrics,
@@ -14,6 +14,18 @@ import {
   computeMonthlyData,
   formatPeriodLabel,
 } from "@/lib/financial-utils";
+
+// Recharts is ~60% of the bundle and the KPIs don't need it: load the charts in their own chunk.
+const IncomeOutcomeChart = lazy(() =>
+  import("@/components/dashboard/income-outcome-chart").then((m) => ({
+    default: m.IncomeOutcomeChart,
+  })),
+);
+const ProfitPercentChart = lazy(() =>
+  import("@/components/dashboard/profit-percent-chart").then((m) => ({
+    default: m.ProfitPercentChart,
+  })),
+);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -58,8 +70,16 @@ function App() {
         <div className="flex flex-col gap-8">
           <DashboardHeader period={period ?? "—"} />
 
+          <div role="status" className="sr-only">
+            {loading ? "Loading financial data…" : error ? "" : "Financial data loaded."}
+          </div>
+
           {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive-foreground">
+            <div
+              role="alert"
+              lang="es"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive-foreground"
+            >
               {error}
             </div>
           ) : null}
@@ -72,8 +92,19 @@ function App() {
             aria-label="Financial charts"
             className="grid grid-cols-1 gap-4 xl:grid-cols-2"
           >
-            <IncomeOutcomeChart data={monthlyData} loading={loading} />
-            <ProfitPercentChart data={monthlyData} loading={loading} />
+            <ChartsErrorBoundary>
+              <Suspense
+                fallback={
+                  <>
+                    <ChartSkeleton />
+                    <ChartSkeleton />
+                  </>
+                }
+              >
+                <IncomeOutcomeChart data={monthlyData} loading={loading} />
+                <ProfitPercentChart data={monthlyData} loading={loading} />
+              </Suspense>
+            </ChartsErrorBoundary>
           </section>
         </div>
       </div>

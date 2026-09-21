@@ -18,7 +18,11 @@ Todas las versiones proceden de los manifests reales del repositorio (no de supo
 - Lint: ESLint `9.39.4` con flat config (`frontend/eslint.config.js`), `typescript-eslint`,
   `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
 - Test: Vitest `4.1.4` (+ `@vitest/coverage-v8`) — tests colocados junto al código
-  (`frontend/src/lib/financial-utils.test.ts`)
+  (`frontend/src/lib/financial-utils.test.ts`); tests de componentes con `@testing-library/react`,
+  `@testing-library/dom`, `@testing-library/jest-dom` y `jsdom` (entorno configurado en el bloque `test` de
+  `frontend/vite.config.ts`, setup en `frontend/src/test/setup.ts`)
+- Los gráficos (`recharts`) se cargan con `React.lazy` desde `frontend/src/App.tsx`, dentro de
+  `ChartsErrorBoundary` y `Suspense`, para mantener recharts fuera del chunk de entrada
 - Node `24-alpine` en el Dockerfile del frontend — `frontend/Dockerfile`
 
 ## Backend — `backend/`
