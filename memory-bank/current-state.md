@@ -2,6 +2,13 @@
 
 Estado verificado ejecutando el proyecto el 2026-09-08 (detalle completo en `verification.md`).
 
+> **Actualización 2026-09-21** (rama `feature/agent-skills`, detalle y evidencias en
+> `memory-bank/progress.md`): vitest pasa de 6 a **17 tests** (ahora hay tests de componentes
+> `*.test.tsx`); los gráficos se cargan con `React.lazy` en su propio chunk y ya no existe el aviso de
+> chunk >500 kB; la verificación visual **sí** se hizo en un navegador real (Edge headless con
+> `playwright-core` fuera del repo). Donde las secciones de abajo digan "6/6", "no hay tests de
+> componentes React" o "sin verificación visual", prevalece esta nota.
+
 ## Qué funciona (verificado)
 
 - **`docker compose up --build`** (mecanismo soportado por el README): ambos contenedores arrancan
